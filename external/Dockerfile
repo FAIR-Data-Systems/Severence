@@ -28,6 +28,16 @@ WORKDIR /app
 COPY Gemfile Gemfile.lock ./
 RUN bundle install --jobs 4 --retry 3
 
+# net-imap ships as a Ruby "default gem" baked into the base image at
+# whatever version that Ruby patch release bundled (0.3.9 here) -- pinning
+# a newer version in the Gemfile (unused by this app; pulled in purely to
+# get a patched version) installs it alongside the old one rather than
+# replacing it, since Bundler and RubyGems' own default-gem installation
+# use different paths. The stale, vulnerable default copy still sits on
+# disk either way; remove it explicitly so it isn't there at all, rather
+# than just shadowed by the newer bundled copy at runtime.
+RUN gem uninstall -i /usr/local/lib/ruby/gems/3.2.0 net-imap --all --force || true
+
 # Copy app + entrypoint
 COPY VERSION outie.rb ./
 COPY entrypoint.sh .

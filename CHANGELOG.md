@@ -6,6 +6,9 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ### Changed
 
+- `Security/security-patch.sh` rebuilds both images from source, applies an OS-level `apt` update/dist-upgrade, scans with Trivy, pushes, and regenerates `external/docker-compose.yml`/`internal/docker-compose.yml` from new `Security/*-docker-compose-template-template.yml` masters -- keeping those two live compose files in sync with any hardening changes made here. `Security/parse-security-scans.rb` and `Security/build_register.py` (adapted for this repo's two images) turn scan output into `Security/vulnerability-register.csv`.
+- Both Dockerfiles now remove the stale `net-imap` default gem after `bundle install`; both Gemfiles pin `net-imap`/`rack-session` to current patch versions.
+- Removed the optional Beacon v2 facade section from `external/docker-compose.yml` and its references elsewhere in the docs.
 - `query_id` (on `POST /severance/queries`) must now match a fixed, slash-free character whitelist before a job is queued (`external/outie.rb`); `internal/innie.rb` independently requires `query_id` to exactly match an entry in its own scanned query registry before doing any file lookup.
 - Request bodies to `external/outie.rb`'s JSON endpoints, and binding values processed by `internal/innie.rb`, are now validated as well-formed UTF-8 before use (`external/outie.rb`'s `read_utf8_body!`; `internal/innie.rb`'s `substitute_grlc_bindings`, alongside its existing IRI validation).
 - `external/outie.rb`'s failed-authentication log line no longer includes the Authorization header value or the configured `AUTH_TOKEN` -- it logs only whether the header was present, plus the caller's IP.

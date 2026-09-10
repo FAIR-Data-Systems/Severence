@@ -1,6 +1,6 @@
 services:
   external:
-    image: fairdatasystems/sevexternal:2026-04-24
+    image: fairdatasystems/sevexternal:2026-09-10
     restart: always
     security_opt:
       - "no-new-privileges:true"
@@ -32,40 +32,3 @@ services:
     environment:
       - RACK_ENV=production
       - APP_ENV=production     # both for redundancy
-
-  # ── Optional: Beacon v2 facade ────────────────────────────────────────────
-  # A GA4GH Beacon v2-shaped facade for CARE-SM-2 patient data, sitting in
-  # front of this External component the same way any other Severance client
-  # would -- it only ever talks to External over HTTP, never to Internal or
-  # the triplestore directly, so it belongs in the same DMZ trust tier as
-  # External itself (not a stricter one).
-  #
-  # Source + Dockerfile: implementation/Beacon2/facade/ in the
-  # CARE-Semantic-Model-Version-2 repo. Build it there --
-  # `docker build --build-arg BEACON_FACADE_VERSION="$(cat VERSION)" -t
-  # beacon-facade:$(cat VERSION) .` -- and uncomment below to run it
-  # alongside External.
-  #
-  # Before enabling this, Severance Internal also needs the two named
-  # queries this facade depends on -- copy
-  # implementation/Beacon2/severance-queries/individuals_exists.rq and
-  # individuals_count.rq into your Internal deployment's ./queries folder
-  # (see internal/README.md's QUERIES section, and
-  # implementation/Beacon2/severance-queries/README.md for what those
-  # queries expect). Without them, this facade's /individuals calls will
-  # fail with "Query file missing" from Internal.
-  #
-  # All env vars below are BEACON_-prefixed on purpose, so they can't
-  # collide with unrelated env vars on this same host/compose file.
-  #
-  # beacon:
-  #   image: beacon-facade:0.1.0   # or your own registry tag, once published -- see implementation/Beacon2/VERSION
-  #   ports: ["4567:4567"]   # HOST:CONTAINER -- change the left side to expose on a different host port
-  #   environment:
-  #     - BEACON_SEVERANCE_URL=http://external:3000   # reach External by its service name on the compose network
-  #     # - BEACON_PORT=4567                          # only needed to change what the container itself listens on internally; defaults to 4567
-  #     - BEACON_SEVERANCE_AUTH_TOKEN=${AUTH_TOKEN}   # match External's own .env AUTH_TOKEN
-  #     - BEACON_FACADE_AUTH_KEY=                     # pre-shared key the VP (or another caller) sends as `auth-key`; unset = every caller trusted, see facade/README.md
-  #     - BEACON_POLL_INTERVAL=1
-  #     - BEACON_POLL_CEILING=20
-

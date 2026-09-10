@@ -1,12 +1,18 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    date (3.5.1)
     diff-lcs (1.6.2)
     fileutils (1.8.0)
     json (2.19.3)
     net-http (0.9.1)
       uri (>= 0.11.1)
     net-http-digest_auth (1.4.1)
+    net-imap (0.6.7)
+      date
+      net-protocol
+    net-protocol (0.3.0)
+      timeout
     rspec (3.13.2)
       rspec-core (~> 3.13.0)
       rspec-expectations (~> 3.13.0)
@@ -21,6 +27,7 @@ GEM
       rspec-support (~> 3.13.0)
     rspec-support (3.13.7)
     tempfile (0.3.1)
+    timeout (0.6.1)
     uri (1.1.1)
 
 PLATFORMS
@@ -32,21 +39,26 @@ DEPENDENCIES
   json (~> 2.19)
   net-http (~> 0.9.1)
   net-http-digest_auth (~> 1.4)
+  net-imap (~> 0.5)
   rspec (~> 3.13)
   tempfile (~> 0.3.1)
 
 CHECKSUMS
+  date (3.5.1) sha256=750d06384d7b9c15d562c76291407d89e368dda4d4fff957eb94962d325a0dc0
   diff-lcs (1.6.2) sha256=9ae0d2cba7d4df3075fe8cd8602a8604993efc0dfa934cff568969efb1909962
   fileutils (1.8.0) sha256=8c6b1df54e2540bdb2f39258f08af78853aa70bad52b4d394bbc6424593c6e02
   json (2.19.3) sha256=289b0bb53052a1fa8c34ab33cc750b659ba14a5c45f3fcf4b18762dc67c78646
   net-http (0.9.1) sha256=25ba0b67c63e89df626ed8fac771d0ad24ad151a858af2cc8e6a716ca4336996
   net-http-digest_auth (1.4.1) sha256=4b8ad50ed8d180a58db5d6c49449b987dd0466fe01e24037945bc007562a08db
+  net-imap (0.6.7) sha256=b5c9573be975d856de252ee851871724da66aa2d449b2482d5690bd12bc23660
+  net-protocol (0.3.0) sha256=ba310c3d4f1cad46bb1ab20336b06669b1ff8f7c568d9cb9342b32a718547472
   rspec (3.13.2) sha256=206284a08ad798e61f86d7ca3e376718d52c0bc944626b2349266f239f820587
   rspec-core (3.13.6) sha256=a8823c6411667b60a8bca135364351dda34cd55e44ff94c4be4633b37d828b2d
   rspec-expectations (3.13.5) sha256=33a4d3a1d95060aea4c94e9f237030a8f9eae5615e9bd85718fe3a09e4b58836
   rspec-mocks (3.13.8) sha256=086ad3d3d17533f4237643de0b5c42f04b66348c28bf6b9c2d3f4a3b01af1d47
   rspec-support (3.13.7) sha256=0640e5570872aafefd79867901deeeeb40b0c9875a36b983d85f54fb7381c47c
   tempfile (0.3.1) sha256=0bb53ab646744e505eb3102147e22ae130a626a15563e882428c1ec973fed76a
+  timeout (0.6.1) sha256=78f57368a7e7bbadec56971f78a3f5ecbcfb59b7fcbb0a3ed6ddc08a5094accb
   uri (1.1.1) sha256=379fa58d27ffb1387eaada68c749d1426738bd0f654d812fcc07e7568f5c57c6
 
 BUNDLED WITH

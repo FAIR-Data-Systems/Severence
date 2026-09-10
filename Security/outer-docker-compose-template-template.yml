@@ -1,6 +1,28 @@
 services:
   external:
     image: {SOUT}
+    restart: always
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    cap_add:
+      # entrypoint.sh runs as root to chown the mounted volumes to the
+      # severance user (UID 1000, see external/Dockerfile) before dropping
+      # to it via gosu -- verified live, boots and writes real job/result
+      # data to /data with exactly this set and nothing more.
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+    # No resource ceiling existed before this -- a bug or a burst of
+    # requests could exhaust the whole host with no limit in place. These
+    # are conservative starting points (matching Sextans-Suite's own
+    # similarly-sized services), not tuned numbers; raise them if a real
+    # workload needs more.
+    mem_limit: 512m
+    cpus: 1
     ports: ["3000:3000"]
     env_file:
       - .env
@@ -10,4 +32,3 @@ services:
     environment:
       - RACK_ENV=production
       - APP_ENV=production     # both for redundancy
-

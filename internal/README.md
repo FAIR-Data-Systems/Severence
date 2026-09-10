@@ -110,17 +110,3 @@ We provide some [guidance for how to author these queries](./queries/README.md) 
 
 **Note:**  The ./queries folder content is re-read every time Internal polls External, so you can dynamically change the queries in that folder and it will update on the next polling cycle.
 
-### Optional: queries for the Beacon v2 facade
-
-If you're running the optional Beacon facade (see the commented-out
-`beacon` service in `external/docker-compose.yml`), copy
-`implementation/Beacon2/severance-queries/individuals_exists.rq` and
-`individuals_count.rq` (from the CARE-Semantic-Model-Version-2 repo) into
-this `./queries` folder. Those two named queries are the entire dependency
-the facade has on Internal -- without them, its `/individuals` endpoint
-will submit jobs Internal can't find (`Query file missing` in Internal's
-logs) and every request will eventually time out waiting for a result.
-See that file's own README for the filter contract and the modeling
-assumptions baked into it.
-
-

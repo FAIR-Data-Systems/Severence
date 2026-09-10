@@ -9,3 +9,7 @@ gem 'puma', '~> 7.2'
 gem "dotenv", "~> 3.2"
 
 gem "securerandom", "~> 0.4.1"
+
+gem "rack-session", "~> 2.1.2"
+
+gem "net-imap", "~> 0.5"

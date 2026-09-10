@@ -36,7 +36,20 @@ end
 
 def write_csv_output(vulns, output_file)
   # Write filtered vulnerabilities to a CSV file for spreadsheet use.
-  return "No CRITICAL or HIGH vulnerabilities found. No CSV file created for #{output_file}." if vulns.empty?
+  #
+  # If there's nothing to report, remove any stale CSV left over from a
+  # previous run instead of just skipping the write -- a rescan that
+  # resolved every CRITICAL/HIGH finding for an image must not leave the
+  # old (now-wrong) CSV sitting on disk to be silently read by
+  # build_register.py as if it were still current. Hit this for real in
+  # Sextans-Suite (see that project's VULNERABILITY_TRIAGE.md) before this
+  # fix existed.
+  if vulns.empty?
+    removed = File.delete(output_file) if File.exist?(output_file)
+    return if removed.nil?
+
+    return "No CRITICAL or HIGH vulnerabilities found. Removed stale '#{output_file}' from a previous run."
+  end
 
   headers = %w[Target VulnerabilityID Package InstalledVersion FixedVersion Severity Title
                PrimaryURL]
@@ -94,5 +107,6 @@ files.each do |file|
   output_file = File.join(File.dirname(file), File.basename(file, '.json') + '.csv')
 
   # Write CSV and print result
-  puts write_csv_output(vulns, output_file)
+  result = write_csv_output(vulns, output_file)
+  puts result unless result.nil?
 end
