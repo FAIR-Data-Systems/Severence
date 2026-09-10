@@ -13,3 +13,5 @@ gem "securerandom", "~> 0.4.1"
 gem "rack-session", "~> 2.1.2"
 
 gem "net-imap", "~> 0.5"
+
+gem "json", "~> 2.19"

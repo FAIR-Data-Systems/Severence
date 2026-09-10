@@ -37,6 +37,15 @@ RUN bundle install --jobs 4 --retry 3
 # disk either way; remove it explicitly so it isn't there at all, rather
 # than just shadowed by the newer bundled copy at runtime.
 RUN gem uninstall -i /usr/local/lib/ruby/gems/3.2.0 net-imap --all --force || true
+# json is also a default gem, and IS actually used by this app (unlike
+# net-imap) -- confirmed live that `bundle exec` (what entrypoint.sh
+# actually runs under) correctly resolves the newer Bundler-managed copy
+# first, so the version bump in the Gemfile is real and effective. Unlike
+# net-imap, RubyGems refuses to uninstall it ("cannot be uninstalled
+# because it is a default gem" -- it's a compiled default gem, not a pure
+# Ruby one) -- the older, vulnerable version stays physically present on
+# disk (Trivy will keep flagging it) but is never loaded by the running
+# application.
 
 # Copy app + entrypoint
 COPY VERSION outie.rb ./

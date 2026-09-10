@@ -4,6 +4,7 @@ GEM
     base64 (0.3.0)
     date (3.5.1)
     dotenv (3.2.0)
+    json (2.21.2)
     logger (1.7.0)
     mustermann (3.0.4)
       ruby2_keywords (~> 0.0.1)
@@ -42,6 +43,7 @@ PLATFORMS
 
 DEPENDENCIES
   dotenv (~> 3.2)
+  json (~> 2.19)
   net-imap (~> 0.5)
   puma (~> 7.2)
   rack-session (~> 2.1.2)
