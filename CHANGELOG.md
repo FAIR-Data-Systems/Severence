@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ### Changed
 
+- `ALLOWED_INTERNAL_IPS` entries may now be a CIDR range (e.g. `192.168.1.0/24`) in addition to a bare IP or the `localhost` keyword. A malformed entry is skipped (logged) rather than rejecting every request. Closes #5.
+
 - `Security/security-patch.sh` rebuilds both images from source, applies an OS-level `apt` update/dist-upgrade, scans with Trivy, pushes, and regenerates `external/docker-compose.yml`/`internal/docker-compose.yml` from new `Security/*-docker-compose-template-template.yml` masters -- keeping those two live compose files in sync with any hardening changes made here. `Security/parse-security-scans.rb` and `Security/build_register.py` (adapted for this repo's two images) turn scan output into `Security/vulnerability-register.csv`.
 - Both Dockerfiles now remove the stale `net-imap` default gem after `bundle install`; both Gemfiles pin `net-imap`/`rack-session` to current patch versions.
 - Removed the optional Beacon v2 facade section from `external/docker-compose.yml` and its references elsewhere in the docs.

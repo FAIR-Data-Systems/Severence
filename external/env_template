@@ -6,6 +6,6 @@ RESULTS_DIR=/data/results  # DO NOT CHANGE THIS unless you really know what you'
 AUTH_TOKEN=YesItsMe   # static bearer secret -- anyone who obtains it can replay it indefinitely; see README.md's note on what this does and doesn't protect against, and rotate it if ever exposed
 # CHANGE 192.168.1.100 to the actual IP of the internal server in this next section
 # others are docker internal IPs or localhost.  These can be removed in production if you want to be more restrictive, but they are needed for testing and development.
-ALLOWED_INTERNAL_IPS=172.31.0.1,127.0.0.1,::1,192.168.1.100   # ← CHANGE 192.168.1.100 to the actual IP of the internal server
+ALLOWED_INTERNAL_IPS=172.31.0.1,127.0.0.1,::1,192.168.1.100   # ← CHANGE 192.168.1.100 to the actual IP of the internal server (each entry may also be a CIDR range, e.g. 192.168.1.0/24)
 # the path to the JSON representing the currently available Internal queries 
 METADATA_DIR=/queries-metadata  # Don't change this unless you know what you're doing

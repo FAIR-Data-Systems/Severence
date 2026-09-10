@@ -6,6 +6,7 @@ require 'json'
 require 'securerandom'
 require 'openssl'
 require 'fileutils'
+require 'ipaddr'
 
 # Sinatra 4.x/rack-protection 4.x enable Rack::Protection::HostAuthorization
 # by default, which rejects any Host header outside a small built-in
@@ -177,20 +178,38 @@ end
 
 # ============== Security: Internal IP filtering for sensitive endpoints ==============
 
+# Whether `client_ip` is covered by `entry`, an ALLOWED_INTERNAL_IPS list
+# item -- either the literal keyword "localhost", a bare IP (unchanged
+# behavior from before), or now also a CIDR range (e.g. "192.168.1.0/24").
+# A malformed entry is skipped (logged, not matched) rather than crashing
+# the whole check -- one bad entry in the list shouldn't take down every
+# request to these internal-only endpoints. IPAddr#include? itself returns
+# false (doesn't raise) when comparing across address families (e.g. a v4
+# range against a v6 client), so no special-casing is needed for that.
+def internal_ip_allowed?(entry, client_ip)
+  return ['127.0.0.1', '::1'].include?(client_ip) if entry == 'localhost'
+
+  IPAddr.new(entry).include?(IPAddr.new(client_ip))
+rescue ArgumentError => e
+  # IPAddr::Error (raised for a malformed entry/IP) is itself a subclass of
+  # ArgumentError -- rescuing both would be redundant.
+  warn "⚠ Skipping invalid ALLOWED_INTERNAL_IPS entry #{entry.inspect}: #{e.message}"
+  false
+end
+
 # Security filter applied to every request.
 #
 # - Internal endpoints (`/severance/queue/pull`, `/severance/jobs/*`, `/severance/available_queries`)
-#   are only accessible from whitelisted IPs (default: localhost).
+#   are only accessible from whitelisted IPs (default: localhost). Each
+#   ALLOWED_INTERNAL_IPS entry may be a bare IP or a CIDR range.
 # - All other (user-facing) endpoints require a valid `Bearer` token if `AUTH_TOKEN` is set.
 before do
   # === Internal calls from Innie (no auth required) ===
   internal_paths = ['/severance/queue/pull', '/severance/jobs/', '/severance/available_queries']
   if internal_paths.any? { |p| request.path_info.start_with?(p) }
-    allowed_ips = (ENV['ALLOWED_INTERNAL_IPS'] || '127.0.0.1,::1,localhost').split(',').map(&:strip)
+    allowed_entries = (ENV['ALLOWED_INTERNAL_IPS'] || '127.0.0.1,::1,localhost').split(',').map(&:strip)
     client_ip = request.ip
-    # Allow if client IP is in the list or it's localhost
-    is_allowed = allowed_ips.include?(client_ip) ||
-                 (allowed_ips.include?('localhost') && ['127.0.0.1', '::1'].include?(client_ip))
+    is_allowed = allowed_entries.any? { |entry| internal_ip_allowed?(entry, client_ip) }
     halt 403, "Access denied from #{client_ip} - internal IP required" unless is_allowed
     # Internal call → bypass Bearer token check
     return

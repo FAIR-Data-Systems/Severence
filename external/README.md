@@ -27,7 +27,7 @@
     ALLOWED_INTERNAL_IPS=172.31.0.1,127.0.0.1,::1,192.168.1.100   # CHANGE 192.168.1.100 to the IP of Internal 
     METADATA_DIR=/queries-metadata  # Don't change this unless you know what you're doing
 
-`ALLOWED_INTERNAL_IPS` is a whitelist of IP addresses that are allowed to access the portions of the API that do not require authentication.  It should be VERY restrictive - maybe including localhost/127.0.0.1 only during testing
+`ALLOWED_INTERNAL_IPS` is a whitelist of addresses that are allowed to access the portions of the API that do not require authentication.  Each comma-separated entry may be a bare IP (`192.168.1.100`), a CIDR range (`192.168.1.0/24`), or the literal keyword `localhost`.  It should be VERY restrictive - maybe including localhost/127.0.0.1 only during testing
 
 The `ENCRYPTION_KEY_HEX` must be shared with the external componenet, since all results are encrypted
 

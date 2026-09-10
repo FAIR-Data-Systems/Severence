@@ -133,10 +133,6 @@ fairdatasystems/sevexternal:2026-09-10 (debian 13.6),CVE-2026-78408,util-linux,2
 fairdatasystems/sevexternal:2026-09-10 (debian 13.6),CVE-2026-78409,util-linux,2.41.5-0+deb13u1,N/A,HIGH,util-linux: util-linux: X-mount.subdir detached-tree resolution can escape via intermediate symlinks,https://avd.aquasec.com/nvd/cve-2026-78409
 fairdatasystems/sevexternal:2026-09-10 (debian 13.6),CVE-2026-78410,util-linux,2.41.5-0+deb13u1,N/A,HIGH,"util-linux: util-linux: restricted bind mounts do not pin the source, allowing X-mount.owner/group/mode redirection",https://avd.aquasec.com/nvd/cve-2026-78410
 Ruby,CVE-2026-41316,erb,4.0.2,"~> 4.0.3.1, ~> 4.0.4.1, ~> 6.0.1.1, >= 6.0.4",HIGH,erb: ERB: Arbitrary code execution via deserialization bypass,https://avd.aquasec.com/nvd/cve-2026-41316
-Ruby,CVE-2026-42257,net-imap,0.3.9,"~> 0.4.24, ~> 0.5.14, >= 0.6.4",CRITICAL,net-imap: Net::IMAP: Arbitrary IMAP command injection via CRLF sequences in unvalidated input,https://avd.aquasec.com/nvd/cve-2026-42257
-Ruby,CVE-2026-42245,net-imap,0.3.9,"~> 0.4.24, ~> 0.5.14, >= 0.6.4",HIGH,ruby: net-imap: Net::IMAP: Denial of Service via crafted IMAP responses,https://avd.aquasec.com/nvd/cve-2026-42245
-Ruby,CVE-2026-42246,net-imap,0.3.9,"~> 0.3.10, ~> 0.4.24, ~> 0.5.14, >= 0.6.4",HIGH,net-imap: ruby: Net::IMAP: Information disclosure via man-in-the-middle attack bypassing TLS,https://avd.aquasec.com/nvd/cve-2026-42246
-Ruby,CVE-2026-42258,net-imap,0.3.9,"~> 0.4.24, ~> 0.5.14, >= 0.6.4",HIGH,ruby/net-imap: ruby: Net::IMAP: IMAP Command Injection via Symbol Arguments,https://avd.aquasec.com/nvd/cve-2026-42258
 Ruby,CVE-2026-47736,puma,7.2.0,"~> 7.2.1, >= 8.0.2",HIGH,puma: Puma: Denial of Service due to unbounded memory growth in PROXY protocol v1,https://avd.aquasec.com/nvd/cve-2026-47736
 Ruby,CVE-2026-47737,puma,7.2.0,"~> 7.2.1, >= 8.0.2",HIGH,puma: Puma: Source IP spoofing via PROXY protocol header re-parsing,https://avd.aquasec.com/nvd/cve-2026-47737
 Ruby,CVE-2026-34785,rack,3.2.5,"~> 2.2.23, ~> 3.1.21, >= 3.2.6",HIGH,github.com/rack/rack: Rack: Information disclosure via incorrect static file serving prefix check,https://avd.aquasec.com/nvd/cve-2026-34785
