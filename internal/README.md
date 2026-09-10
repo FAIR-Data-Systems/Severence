@@ -6,12 +6,11 @@
 
 ## Prerequisites
 
-1. A GraphDB instance up and running, containing...
-2. A repository (called e.g. 'severance'), containing...
-3. Patient Registry data following the CARE-SM model
-4. A read-only user on the 'severance' repository (e.g. username/pass 'suser'/'spass')
-5. An instance of Severence External running in your DMZ, and
-6. It's API URL must be visible from THIS SERVER to reach-out
+1. A Virtuoso instance up and running, containing...
+2. Patient Registry data following the CARE-SM-2 model, loaded into a named graph (Virtuoso is one-instance-one-database, with no separate "repository" concept the way GraphDB has -- isolation between installs is via named graph, not a repository name)
+3. A Virtuoso user with read (`SPARQL_SELECT`) access to that data -- see the note on `TRIPLESTORE_USER`/`TRIPLESTORE_PASS` below on why this must be a real Digest-authenticated user, not an anonymous read
+4. An instance of Severence External running in your DMZ, and
+5. It's API URL must be visible from THIS SERVER to reach-out
 
 ## Configuration
 
@@ -27,7 +26,7 @@
     RESULT_FORMAT=csv  # must be the same as the External component!
     QUERY_DIR=/queries  # DO NOT CHANGE THIS unless you really know what you're doing
     EXTERNAL_URL=http://111.111.111.111:3000   # The URL to the External API.  
-    TRIPLESTORE_URL=http://localhost:7200/repositories/MyREPO  # make sure you create the readonly user
+    TRIPLESTORE_URL=http://localhost:8890/sparql-auth  # Virtuoso's Digest-authenticated SPARQL endpoint
     TRIPLESTORE_USER = markw
     TRIPLESTORE_PASS = markw
     POLL_INTERVAL=10  # seconds
@@ -35,6 +34,8 @@
     GID=1000   # at terminal:  id -g
 
 The `ENCRYPTION_KEY_HEX` must be shared with the external componenet, since all results are encrypted
+
+**A note on `TRIPLESTORE_URL`/`TRIPLESTORE_USER`/`TRIPLESTORE_PASS`:** Virtuoso's plain `/sparql` endpoint serves the anonymous `nobody` account, which -- unless a deployment has deliberately locked it down (see `Sextans-Suite`'s `virtuoso-initdb/lockdown-anonymous-sparql.sql` for the pattern Sextans Fix/Sight both apply) -- can read every graph in the store with no credentials at all. Internal therefore talks to `/sparql-auth` by default whenever `TRIPLESTORE_USER`/`TRIPLESTORE_PASS` are set, using real HTTP Digest authentication (Virtuoso rejects Basic auth outright on its authenticated endpoints, 401 with no retry). If you leave the credentials unset, Internal falls back to an unauthenticated request against whatever URL you give it -- only appropriate for a triplestore/deployment that doesn't require auth for reads at all.
 
 write this to `.env` after editing.  UID and GID ensure that you have access to modify the `./queries` folder.
 

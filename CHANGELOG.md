@@ -9,6 +9,11 @@ All notable changes to this project are documented here. Format loosely follows 
 - `query_id` (on `POST /severance/queries`) must now match a fixed, slash-free character whitelist before a job is queued (`external/outie.rb`); `internal/innie.rb` independently requires `query_id` to exactly match an entry in its own scanned query registry before doing any file lookup.
 - Request bodies to `external/outie.rb`'s JSON endpoints, and binding values processed by `internal/innie.rb`, are now validated as well-formed UTF-8 before use (`external/outie.rb`'s `read_utf8_body!`; `internal/innie.rb`'s `substitute_grlc_bindings`, alongside its existing IRI validation).
 - `external/outie.rb`'s failed-authentication log line no longer includes the Authorization header value or the configured `AUTH_TOKEN` -- it logs only whether the header was present, plus the caller's IP.
+- **`internal/innie.rb` now connects to Virtuoso instead of GraphDB.** Added an `execute_sparql_query` helper that performs HTTP Digest authentication (via the `net-http-digest_auth` gem) against a `/sparql-auth`-style endpoint using a form-encoded `query=` body, when `TRIPLESTORE_USER`/`TRIPLESTORE_PASS` are configured; falls back to a plain unauthenticated request otherwise.
+  - `TRIPLESTORE_URL`'s documented convention, `internal/env_template`, `internal/.env`, and `internal/README.md`'s prerequisites are updated accordingly (`http://host:8890/sparql-auth`).
+  - Verified live end-to-end against a Virtuoso instance.
+  - Uses `URI.encode_www_form_component` (from the `uri` stdlib, already loaded transitively) for the form-encoded query body rather than pulling in the `cgi` library for one method call.
+  - Triplestore responses are now checked for success before being processed and encrypted.
 
 ### Security
 

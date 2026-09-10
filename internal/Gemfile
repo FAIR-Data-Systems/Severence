@@ -9,3 +9,5 @@ gem "json", "~> 2.19"
 gem "rspec", "~> 3.13"
 
 gem "tempfile", "~> 0.3.1"
+
+gem "net-http-digest_auth", "~> 1.4"
