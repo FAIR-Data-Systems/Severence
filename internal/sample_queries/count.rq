@@ -14,12 +14,12 @@ PREFIX sio: <http://semanticscience.org/resource/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX ordo: <http://www.orpha.net/ORDO/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-PREFIX ofn: <http://www.ontotext.com/sparql/functions/>
+PREFIX ogms: <http://purl.obolibrary.org/obo/OGMS_>
 
-select (COUNT(?disattribute) as ?count) where { 
+select (COUNT(?disattribute) as ?count) where {
 ?disprocess a  <http://purl.obolibrary.org/obo/NCIT_C18020> ; # diagnostic process
             sio:SIO_000229 ?disoutput .
-?disoutput a <http://purl.obolibrary.org/obo/NCIT_C154625>; # diagnosis code
+?disoutput a ogms:0000073 ; # diagnosis (CARE-SM-2's Diagnosis output_type; NCIT_C154625 is a different node's type -- output_id_type, reached via sio:SIO_000671, not this one)
            sio:SIO_000628 ?disattribute.
 ?disattribute a ?_orphacode_iri .  # attribute is a orphacode
 }
