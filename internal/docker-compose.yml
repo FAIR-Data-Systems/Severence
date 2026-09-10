@@ -2,7 +2,29 @@ services:
 
   internal:
     image: fairdatasystems/sevinternal:2026-04-24
-    network_mode: host
+    restart: always
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    # No resource ceiling existed before this -- a bug or a burst of
+    # requests could exhaust the whole host with no limit in place. These
+    # are conservative starting points (matching Sextans-Suite's own
+    # similarly-sized services), not tuned numbers; raise them if a real
+    # workload needs more.
+    mem_limit: 512m
+    cpus: 1
+    # Internal never listens on any port -- it only ever makes outbound
+    # requests to EXTERNAL_URL and TRIPLESTORE_URL -- so it doesn't need
+    # host networking to do its job. extra_hosts gives a working
+    # `localhost`-equivalent (`host.docker.internal`) for the common case
+    # of testing with everything on one machine, without exposing this
+    # container to every interface/port the host itself can reach. Point
+    # EXTERNAL_URL/TRIPLESTORE_URL at a real reachable address (a LAN IP, a
+    # hostname, or host.docker.internal) rather than `localhost` -- inside
+    # a container, `localhost` means the container itself, not the host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - "./queries:/queries"
     tmpfs:
@@ -13,5 +35,4 @@ services:
       - GID=${GID:-1000}   # see README file for how to set this
 
     env_file: .env
-    user: "${UID:-1000}:${GID:-1000}"   # Run container as your host user, or 1000 fallback (which is usually the first non-root user created on a Linux system)  
-    
+    user: "${UID:-1000}:${GID:-1000}"   # Run container as your host user, or 1000 fallback (which is usually the first non-root user created on a Linux system)

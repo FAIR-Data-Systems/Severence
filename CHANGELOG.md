@@ -13,7 +13,14 @@ All notable changes to this project are documented here. Format loosely follows 
   - `TRIPLESTORE_URL`'s documented convention, `internal/env_template`, `internal/.env`, and `internal/README.md`'s prerequisites are updated accordingly (`http://host:8890/sparql-auth`).
   - Verified live end-to-end against a Virtuoso instance.
   - Uses `URI.encode_www_form_component` (from the `uri` stdlib, already loaded transitively) for the form-encoded query body rather than pulling in the `cgi` library for one method call.
-  - Triplestore responses are now checked for success before being processed and encrypted.
+  - Triplestore responses are now checked for success before being processed and encrypted; a failure to reach the triplestore at all is now handled the same way External's own polling failures already were, instead of stopping Internal.
+- Both `external/outie.rb` and `internal/innie.rb` now require `ENCRYPTION_KEY_HEX` to be set to a value other than the documented example before starting.
+- `external/docker-compose.yml` and `internal/docker-compose.yml`: added `restart: always`, `security_opt: no-new-privileges`, `cap_drop: [ALL]` (with a minimal `cap_add` on External for its existing chown-then-drop-privileges startup step), and resource limits.
+- `internal/docker-compose.yml` no longer uses `network_mode: host` -- Internal never listens on a port, so ordinary bridge networking reaches External/the triplestore on a separate server exactly as before; `extra_hosts: [host.docker.internal:host-gateway]` is added for the same-host testing case, documented in `internal/README.md`.
+- `external/Dockerfile`: the `severance` user's UID is now pinned to 1000, matching `internal/Dockerfile`'s existing convention and `entrypoint.sh`'s own volume-ownership step.
+- `external/outie.rb`: Rack's default Host-header check is now disabled directly rather than through Sinatra's `set :protection, except:` option.
+
+**Note:** `internal/sample_queries/count.rq` and `patient_filter.rq` are still written against CARE-SM v1's shape; they have not yet been checked against CARE-SM-2 data and will be updated in a follow-up commit.
 
 ### Security
 

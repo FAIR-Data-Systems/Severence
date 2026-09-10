@@ -7,11 +7,36 @@ require 'securerandom'
 require 'openssl'
 require 'fileutils'
 
+# Sinatra 4.x/rack-protection 4.x enable Rack::Protection::HostAuthorization
+# by default, which rejects any Host header outside a small built-in
+# allowlist (`localhost`, IP literals, etc.) with a bare 403 "Host not
+# permitted" -- before any application code, including the `before` filter
+# below, ever runs. `set :protection, except: :host_authorization` (the line
+# this replaced) is Sinatra's documented way to disable one protection, but
+# has proven unreliable across versions in this codebase's sibling projects
+# (see Sextans-Suite's yarrrml-rml/t.rb and Daemon/transform-cdev2.rb, which
+# hit the identical failure and document it in more detail) -- confirmed
+# live here too: External still rejected requests addressed by any hostname
+# other than `localhost`/an IP literal (e.g. `host.docker.internal`, or any
+# real DNS name a deployment might put in EXTERNAL_URL) even with this
+# setting in place. Monkeypatching `accepts?` directly is the fix that has
+# actually held. HostAuthorization exists to defend against DNS-rebinding
+# attacks, where a *browser* is tricked into sending a request with an
+# attacker-chosen Host header; External doesn't render browser-served HTML
+# or trust the Host header for anything security-sensitive (every mutating
+# endpoint already requires its own Bearer token), so disabling this
+# specific check costs nothing real here.
+require 'rack/protection/host_authorization'
+class Rack::Protection::HostAuthorization
+  def accepts?(_request)
+    true
+  end
+end
+
 configure do
   set :server, 'puma'
   set :bind, '0.0.0.0'
   set :port, ENV.fetch('PORT', 4567).to_i
-  set :protection, except: :host_authorization
   # Let `error` blocks (see JSON::ParserError below) handle exceptions
   # regardless of RACK_ENV -- Sinatra's development-mode exception page
   # would otherwise intercept them before a custom handler ever runs.
@@ -59,9 +84,28 @@ class ZeroingBody
   end
 end
 
-# AES-256-GCM encryption key derived from hex environment variable
-ENCRYPTION_KEY = [ENV.fetch('ENCRYPTION_KEY_HEX',
-                            '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')].pack('H*')
+# AES-256-GCM encryption key derived from hex environment variable.
+#
+# Previously fell back to a fixed, literal default (published in this
+# repo's own env_template/README as the example value) whenever
+# ENCRYPTION_KEY_HEX wasn't set -- silently "encrypting" every result with
+# a key anyone can read in this project's own source, giving a deployer who
+# forgot to set it a false sense of security rather than an obvious error.
+# Refusing to start is the fail-closed behavior this project uses
+# everywhere else for exactly this class of mistake (see the IRI/encoding
+# rejection paths in internal/innie.rb).
+EXAMPLE_ENCRYPTION_KEY_HEX = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+raw_encryption_key_hex = ENV['ENCRYPTION_KEY_HEX']&.strip
+if raw_encryption_key_hex.nil? || raw_encryption_key_hex.empty?
+  abort 'FATAL: ENCRYPTION_KEY_HEX is not set. Generate one with `openssl rand -hex 32` ' \
+        'and set it identically on both External and Internal -- refusing to start with no key ' \
+        'rather than silently falling back to a known, public default.'
+elsif raw_encryption_key_hex == EXAMPLE_ENCRYPTION_KEY_HEX
+  abort 'FATAL: ENCRYPTION_KEY_HEX is still the example value from env_template/README.md. ' \
+        'Generate a real one with `openssl rand -hex 32` -- refusing to start with a key ' \
+        'anyone can read in this project\'s own source.'
+end
+ENCRYPTION_KEY = [raw_encryption_key_hex].pack('H*')
 
 # Content-Type for query results (json or csv)
 CONTENT_TYPE = ENV['RESULT_FORMAT'] == 'csv' ? 'text/csv' : 'application/sparql-results+json'

@@ -1,3 +1,7 @@
+# Internal, non-public tracking notes -- detailed security/vulnerability
+# findings and pentest writeups. See Security/INTERNAL_NOTES.md.
+Security/INTERNAL_NOTES.md
+
 *.gem
 *.rbc
 /.config

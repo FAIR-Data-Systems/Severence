@@ -12,9 +12,15 @@ RUN apt-get update -qq && \
       gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user/group
-RUN groupadd -r severance && \
-    useradd -r -g severance -d /app -s /sbin/nologin -c "Docker app user" severance
+# Create non-root user/group. UID is pinned to 1000 (matching
+# internal/Dockerfile's own convention) because entrypoint.sh chowns the
+# mounted volumes to ${UID:-1000}:${GID:-1000} before gosu drops privileges
+# to this user -- without an explicit UID here, useradd auto-assigns one
+# from the system range (999, confirmed live), leaving the app running as
+# a different UID than the one its own entrypoint just chowned the volumes
+# to, and unable to write to /data/queue or /data/results at all.
+RUN groupadd -r -g 1000 severance && \
+    useradd -r -u 1000 -g severance -d /app -s /sbin/nologin -c "Docker app user" severance
 
 WORKDIR /app
 

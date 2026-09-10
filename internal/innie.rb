@@ -35,9 +35,27 @@ RESULT_FORMAT = result == 'csv' ? 'csv' : 'json'
 # Accept header sent to the triplestore
 ACCEPT_HEADER = RESULT_FORMAT == 'csv' ? 'text/csv' : 'application/sparql-results+json'
 
-# AES-256-GCM encryption key derived from hex environment variable
-ENCRYPTION_KEY = [ENV.fetch('ENCRYPTION_KEY_HEX',
-                            '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')]&.pack('H*')
+# AES-256-GCM encryption key derived from hex environment variable.
+#
+# Previously fell back to a fixed, literal default (published in this
+# repo's own env_template/README as the example value) whenever
+# ENCRYPTION_KEY_HEX wasn't set -- silently "encrypting" every result with
+# a key anyone can read in this project's own source. Refusing to start is
+# the fail-closed behavior used everywhere else in this file for exactly
+# this class of mistake (see InvalidIriError/InvalidEncodingError). Kept in
+# sync with the identical check in external/outie.rb.
+EXAMPLE_ENCRYPTION_KEY_HEX = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+raw_encryption_key_hex = ENV['ENCRYPTION_KEY_HEX']&.strip
+if raw_encryption_key_hex.nil? || raw_encryption_key_hex.empty?
+  abort 'FATAL: ENCRYPTION_KEY_HEX is not set. Generate one with `openssl rand -hex 32` ' \
+        'and set it identically on both External and Internal -- refusing to start with no key ' \
+        'rather than silently falling back to a known, public default.'
+elsif raw_encryption_key_hex == EXAMPLE_ENCRYPTION_KEY_HEX
+  abort 'FATAL: ENCRYPTION_KEY_HEX is still the example value from env_template/README.md. ' \
+        'Generate a real one with `openssl rand -hex 32` -- refusing to start with a key ' \
+        'anyone can read in this project\'s own source.'
+end
+ENCRYPTION_KEY = [raw_encryption_key_hex].pack('H*')
 
 # ============== AES-256-GCM helpers ==============
 
@@ -472,7 +490,25 @@ loop do
   uri = URI(TRIPLESTORE_URL)
   warn "SPARQL endpoint: #{uri.inspect}"
 
-  res = execute_sparql_query(uri, query, ACCEPT_HEADER, ENV['TRIPLESTORE_USER'], ENV['TRIPLESTORE_PASS'])
+  # A network-level failure to even reach the triplestore (connection
+  # refused, DNS failure, timeout -- an ordinary operational condition, not
+  # an attack: a restart, a network blip, a firewall change) raises here
+  # uncaught by anything, same as any other exception in this loop with no
+  # supervisor around it. The analogous call two sections up (polling
+  # External for the next job) already handles this with a
+  # rescue/log/sleep/next pattern; this call never got the same treatment.
+  begin
+    res = execute_sparql_query(uri, query, ACCEPT_HEADER, ENV['TRIPLESTORE_USER'], ENV['TRIPLESTORE_PASS'])
+  rescue StandardError => e
+    warn "⚠ Failed to reach triplestore for job #{uuid}: #{e.class} - #{e.message}"
+    begin
+      push_result(uuid, empty_result_body)
+    rescue StandardError => push_error
+      warn "⚠ Failed to push failure result for job #{uuid}: #{push_error.class} - #{push_error.message}"
+    end
+    sleep POLL_INTERVAL
+    next
+  end
 
   warn "SPARQL SERVER: HTTP result status: #{res.code}"
 

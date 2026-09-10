@@ -52,11 +52,36 @@ UID AND GID MUST BE CORRECT!  See instructions in the env_template and below for
 
 Take a moment and figure out your UID and GID!  It defaults to 1000/1000, which is the first non-root user that is created on a system... but that is just a very bad guess.  Take a moment and get it right!
 
-The setting `network mode: host` is critical!  The internal code inside of the docker container must be able to "see" the external component, just as you did when you tested it in the last step.  Please do not change that.
+Internal must be able to "see" the External component and the triplestore, just as you
+did when you tested access in the last step -- but it doesn't need `network mode: host`
+to do that, since Internal never listens on a port of its own; it only ever makes
+outbound requests.
+
+**The normal case -- Internal and External on separate servers (the expected,
+"Severed" deployment topology):** ordinary Docker bridge networking already reaches
+any real IP address or domain name on your LAN or the internet with no special
+configuration at all -- this is standard outbound NAT'd connectivity, unrelated to
+`network_mode: host`. Just set `EXTERNAL_URL`/`TRIPLESTORE_URL` to the real address
+of those servers (verified live: a plain bridge-networked container reaches both a
+real internet domain name and another host's IP directly, no extra config needed).
+
+**The one case that does need something extra -- testing with Internal and External
+on the *same* machine:** `localhost` inside a container means the container itself,
+not the host, so if you're running everything on one box for testing, point
+`EXTERNAL_URL`/`TRIPLESTORE_URL` at `host.docker.internal` instead of `localhost` --
+the `extra_hosts` entry below makes that resolve to the host.
 
     services:
     internal:
-        network_mode: host
+        restart: always
+        security_opt:
+          - "no-new-privileges:true"
+        cap_drop:
+          - ALL
+        mem_limit: 512m
+        cpus: 1
+        extra_hosts:
+          - "host.docker.internal:host-gateway"   # a localhost-equivalent for same-host testing
         image: XXXXX  (the docker-compose in the example, it points to the latest patch)        env_file: .env
         volumes:
         - "./queries:/queries"
