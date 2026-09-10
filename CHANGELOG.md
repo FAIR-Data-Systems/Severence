@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## [Unreleased]
 
+### Changed
+
+- `query_id` (on `POST /severance/queries`) must now match a fixed, slash-free character whitelist before a job is queued (`external/outie.rb`); `internal/innie.rb` independently requires `query_id` to exactly match an entry in its own scanned query registry before doing any file lookup.
+- Request bodies to `external/outie.rb`'s JSON endpoints, and binding values processed by `internal/innie.rb`, are now validated as well-formed UTF-8 before use (`external/outie.rb`'s `read_utf8_body!`; `internal/innie.rb`'s `substitute_grlc_bindings`, alongside its existing IRI validation).
+- `external/outie.rb`'s failed-authentication log line no longer includes the Authorization header value or the configured `AUTH_TOKEN` -- it logs only whether the header was present, plus the caller's IP.
+
 ### Security
 
 - **Fixed a SPARQL injection vulnerability in `internal/innie.rb`'s binding substitution.** Any variable declared `iri` in a query's GRLC annotation (e.g. `?_disease_iri`) was wrapped in `<...>` with no validation of its contents. Since a SPARQL `IRIREF` has no escaping mechanism of its own (unlike a quoted string literal), a caller-supplied value containing a literal `>` could close the angle bracket early and inject arbitrary additional SPARQL — an extra `UNION`, `FILTER`, or graph pattern — directly into an otherwise pre-approved, named query. This defeated "queries are named and pre-approved, not arbitrary" as a security boundary: no new `query_id` was needed, only one existing `iri`-typed variable in any installed query, to read data well outside what that query's author intended (bounded only by whatever the Internal triplestore's own read-only credential can see, i.e. typically the whole repository).

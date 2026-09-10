@@ -109,6 +109,28 @@ def decrypt(encrypted)
   cipher.update(ct) + cipher.final
 end
 
+# Raised when a request body claims to be JSON but contains a byte sequence
+# that isn't valid UTF-8. `JSON.parse` itself does not reject this -- it
+# happily returns a String tagged UTF-8 whose bytes are invalid, which then
+# blows up with an uncaught ArgumentError/Encoding::CompatibilityError the
+# moment any ordinary string method (`.strip`, string interpolation, etc.)
+# touches it later in the request. Caught in the same place, and treated the
+# same way, as a `JSON::ParserError` (see the `error JSON::ParserError`
+# handler below) -- from an API consumer's perspective a body that isn't
+# valid UTF-8 is just as malformed as one that isn't valid JSON syntax.
+class InvalidBodyEncodingError < StandardError; end
+
+# Reads and returns `request.body`, raising InvalidBodyEncodingError if it
+# is not valid UTF-8. Call this before JSON.parse-ing a request body so the
+# malformed-encoding case is rejected up front, not discovered later by
+# whichever string method happens to touch the bad bytes first.
+def read_utf8_body!
+  raw = request.body.read
+  raise InvalidBodyEncodingError unless raw.dup.force_encoding(Encoding::UTF_8).valid_encoding?
+
+  raw
+end
+
 # ============== Security: Internal IP filtering for sensitive endpoints ==============
 
 # Security filter applied to every request.
@@ -135,7 +157,15 @@ before do
     auth_header = request.env['HTTP_AUTHORIZATION']
     expected = "Bearer #{ENV['AUTH_TOKEN']}"
     unless auth_header && auth_header.casecmp?(expected)
-      warn "Auth failed. Received: #{auth_header.inspect} | Expected: #{expected}"
+      # Never log the real AUTH_TOKEN (`expected`) or the caller-supplied
+      # header -- the latter could itself be a leaked/guessed valid token
+      # from elsewhere, and logging either one turns every failed auth
+      # attempt into a cleartext secret sitting in container logs, readable
+      # by anyone with `docker logs` access (a much wider audience than
+      # anyone who should know the token). Presence/absence and the
+      # caller's IP are enough to operate on without that exposure.
+      state = auth_header ? 'present but did not match' : 'missing'
+      warn "Auth failed from #{request.ip}: Authorization header #{state}"
       halt 401, 'Unauthorized'
     end
   end
@@ -150,7 +180,7 @@ end
 post '/severance/queries' do
   # Safely parse input whether it's JSON or form data
   data = if request.content_type&.include?('application/json')
-           JSON.parse(request.body.read)
+           JSON.parse(read_utf8_body!)
          else
            # For form-encoded or query params
            { 'query_id' => params['query_id'], 'bindings' => params.except('query_id') }
@@ -159,6 +189,18 @@ post '/severance/queries' do
   # Ensure we have a hash and extract query_id safely
   query_id = data.is_a?(Hash) ? data['query_id'] : nil
   halt 400, { error: 'query_id is required' }.to_json if query_id.nil? || query_id.to_s.strip.empty?
+
+  # query_id ends up as a bare filename component on Internal's side
+  # (`#{QUERY_DIR}/#{query_id}.rq` in innie.rb) with no further sanitization
+  # there. Without this whitelist a caller could set query_id to something
+  # like `../demo-queries/count` and make Internal read and execute a .rq
+  # file the deployer never installed/vetted in their own QUERY_DIR --
+  # defeating "queries are named and pre-approved, not arbitrary" entirely.
+  # Same flat, slash-free convention used for this exact purpose elsewhere
+  # in this project family (yarrrml-rml's `t.rb` type whitelist).
+  unless query_id.to_s.strip.match?(/\A[a-zA-Z0-9_-]+\z/)
+    halt 400, { error: 'query_id contains invalid characters' }.to_json
+  end
 
   uuid = SecureRandom.uuid
   job = {
@@ -182,7 +224,7 @@ end
 # @return [400] if JSON is invalid
 # @return [500] on other errors
 post '/severance/available_queries' do
-  queries = JSON.parse(request.body.read)
+  queries = JSON.parse(read_utf8_body!)
   metadata_dir = ENV.fetch('METADATA_DIR', '/queries-metadata')
   warn "Metadata directory for available queries: #{metadata_dir}"
   active_queries_path = "#{metadata_dir}/active_queries.json"
@@ -198,7 +240,7 @@ post '/severance/available_queries' do
   status 200
   content_type 'application/json'
   body({ success: true, count: queries.size }.to_json)
-rescue JSON::ParserError => e
+rescue JSON::ParserError, InvalidBodyEncodingError => e
   warn "❌ Invalid JSON in /available_queries: #{e.message}"
   status 400
   content_type 'application/json'
@@ -347,8 +389,16 @@ end
 # 500, indistinguishable from a real server-side fault) rather than a
 # clean 400. This is a catch-all safety net for any route in this file
 # that doesn't already handle it locally (POST /severance/available_queries
-# already has its own JSON::ParserError rescue, kept as-is).
-error JSON::ParserError do
+# already has its own JSON::ParserError/InvalidBodyEncodingError rescue,
+# kept as-is).
+#
+# InvalidBodyEncodingError is included here too: a body that parses as
+# syntactically valid JSON but contains a string with an invalid UTF-8 byte
+# sequence used to sail straight through JSON.parse (which does not
+# validate encoding) and crash later -- with a full stack trace leaked to
+# the caller -- the instant something as ordinary as `.strip` touched the
+# tainted string (see `read_utf8_body!`, which now catches this up front).
+error JSON::ParserError, InvalidBodyEncodingError do
   content_type 'application/json'
   status 400
   { error: 'invalid_json' }.to_json

@@ -132,6 +132,20 @@ end
 # name, never the offending value -- see the note on InvalidIriError below.
 class InvalidIriError < StandardError; end
 
+# Raised when a binding value contains a byte sequence that isn't valid
+# UTF-8. `JSON.parse` (used both by Outie writing the job file and here
+# when nothing re-validates it) does not check encoding validity, so a
+# tainted value can ride all the way from an attacker's request body into
+# this method's own `.to_s.strip` call, which raises an uncaught
+# ArgumentError/Encoding::CompatibilityError. Unlike External (a per-request
+# web server that survives an unhandled exception in one request), Innie's
+# main loop has no supervisor around this call other than the explicit
+# `rescue InvalidIriError` -- an uncaught exception here kills the entire
+# polling process, and neither compose file sets a `restart:` policy, so it
+# stays dead until someone manually restarts the container. Rejecting the
+# job the same way an invalid IRI is rejected (see below) closes that off.
+class InvalidEncodingError < StandardError; end
+
 # Characters forbidden inside a SPARQL IRIREF (SPARQL 1.1 grammar, §19.8):
 #   '<' ([^<>"{}|^`\]-[#x00-#x20])* '>'
 # i.e. an IRI's own content may not contain <, >, ", {, }, |, ^, backtick,
@@ -169,6 +183,10 @@ def substitute_grlc_bindings(query, bindings, variable_types = {})
 
   bindings.each do |k, v|
     next if v.nil?
+
+    if v.is_a?(String) && !v.valid_encoding?
+      raise InvalidEncodingError, "Binding '#{k}' contains a byte sequence that is not valid UTF-8 (rejected, not substituted)"
+    end
 
     warn "Processing binding: #{k} => #{v.inspect}"
     warn "Variable types for #{k}: #{variable_types[k.to_s]}"
@@ -328,6 +346,23 @@ loop do
   query_id = job['query_id']
   bindings = job['bindings'] || {}
 
+  # `query_id` is attacker-influenced input (it rides in from a caller's
+  # request all the way through Outie's queue). It is used below to build
+  # `query_path` by plain string interpolation -- with no check here, a
+  # value like `../demo-queries/count` would happily resolve outside
+  # QUERY_DIR and let a caller execute a .rq file the deployer never
+  # installed/vetted (Outie also now whitelists query_id's characters, but
+  # this check does not rely on that -- Internal must not trust it either).
+  # Requiring an exact match against `all_queries` (populated only from
+  # files `process_queries` actually found by scanning QUERY_DIR itself)
+  # closes this structurally: no key can exist there that wasn't a real,
+  # already-installed query's own declared query_id.
+  unless all_queries.key?(query_id)
+    warn "Unknown or disallowed query_id: #{query_id.inspect}"
+    sleep POLL_INTERVAL
+    next
+  end
+
   query_path = "#{QUERY_DIR}/#{query_id}.rq"
   unless File.exist?(query_path)
     warn "Query file missing: #{query_path}"
@@ -342,7 +377,7 @@ loop do
   # === Bind grlc-style placeholders (?_key_type) ===
   begin
     query = substitute_grlc_bindings(query, bindings, all_queries[query_id]['variable_types'])
-  rescue InvalidIriError => e
+  rescue InvalidIriError, InvalidEncodingError => e
     # Reject the job outright rather than executing anything -- see the
     # security note on InvalidIriError above. Pushes a safe, zero-row
     # result so the caller resolves promptly instead of hanging until
